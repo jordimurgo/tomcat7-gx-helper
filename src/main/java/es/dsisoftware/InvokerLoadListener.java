@@ -84,7 +84,7 @@ public class InvokerLoadListener implements ServletContextListener {
                 JarEntry entry = e.nextElement();
                 if (entry.getName().endsWith(".class")) {
 
-                    System.out.println(this.getClass().getCanonicalName() + ": jarclass: " + file.getCanonicalPath() );
+                    System.out.println(this.getClass().getCanonicalName() + ": jarclass: " + entry.getName() );
 
                     String name = entry.getName(); // .replace('/', '.');
                     name = name.substring(0, name.length() - 6);
