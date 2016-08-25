@@ -40,23 +40,21 @@ public class InvokerLoadListener implements ServletContextListener {
      * Scans all classes accessible from the context class loader which
      * belong to the given package and subpackages.
      *
-     * @param packageName
      * @return The list of classes found
      */
-    private Set<Class> getClasses(String packageName) {
+    private Set<Class> getClasses() {
         Set<Class> classes = new HashSet<Class>();
         try {
             ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-            String path = packageName.replace('.', '/');
-            Enumeration<URL> resources = classLoader.getResources(path);
+            Enumeration<URL> resources = classLoader.getResources("");
             while (resources.hasMoreElements()) {
                 URL resource = resources.nextElement();
                 if (resource.getProtocol().equals("jar")) {
                     // inside a jar => read the jar files and check
-                    findClassesJar(resource, path, classes);
+                    findClassesJar(resource, classes);
                 } else if (resource.getProtocol().equals("file")) {
                     // read subdirectories and find
-                    findClassesFile(new File(resource.getFile()), packageName, classes);
+                    findClassesFile(new File(resource.getFile()), classes);
                 } else {
                     System.err.println("Unknown protocol connection: " + resource);
                 }
@@ -72,11 +70,10 @@ public class InvokerLoadListener implements ServletContextListener {
      * name specified.
      *
      * @param resource The resource url
-     * @param path
      * @param classes
      * @return
      */
-    private Set<Class> findClassesJar(URL resource, String path, Set<Class> classes) {
+    private Set<Class> findClassesJar(URL resource, Set<Class> classes) {
         JarURLConnection jarConn = null;
         JarFile jar = null;
         try {
@@ -85,10 +82,8 @@ public class InvokerLoadListener implements ServletContextListener {
             Enumeration<JarEntry> e = jar.entries();
             while (e.hasMoreElements()) {
                 JarEntry entry = e.nextElement();
-                if ((entry.getName().startsWith(path + "/")
-                        || entry.getName().startsWith(path + "."))
-                        && entry.getName().endsWith(".class")) {
-                    String name = entry.getName().replace('/', '.');
+                if (entry.getName().endsWith(".class")) {
+                    String name = entry.getName(); // .replace('/', '.');
                     name = name.substring(0, name.length() - 6);
                     checkClass(name, classes);
                 }
@@ -109,20 +104,13 @@ public class InvokerLoadListener implements ServletContextListener {
      * or directory).
      *
      * @param file        The base directory
-     * @param packageName The package name for classes found inside the base directory
      * @return The same classes
-     * @throws ClassNotFoundException
      * @ classes The list of classes
      */
-    private Set<Class> findClassesFile(File file, String packageName, Set<Class> classes) {
+    private Set<Class> findClassesFile(File file, Set<Class> classes) {
         if (file.isFile() && file.getName().endsWith(".class")) {
             //classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
-            checkClass(packageName.substring(0, packageName.length() - 6), classes);
-        } else {
-            File[] files = file.listFiles();
-            for (File f : files) {
-                findClassesFile(f, packageName + "." + f.getName(), classes);
-            }
+            checkClass(file.getName().substring(0, file.getName().length() - 6), classes);
         }
         return classes;
     }
@@ -142,35 +130,27 @@ public class InvokerLoadListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        System.out.println("contextInitialized(ServletContextEvent e)");
+        System.out.println(this.getClass().getCanonicalName() + ".contextInitialized(ServletContextEvent e)");
         ServletContext sc = sce.getServletContext();
-        String list = sc.getInitParameter(PACKAGES_PARAMETER);
         String prefix = sc.getInitParameter(INVOKER_PREFIX_PARAMETER);
         if (prefix == null) {
             prefix = "/servlet/";
         }
-        if (list != null) {
-            String[] packages = list.split(",");
-            for (int i = 0; i < packages.length; i++) {
-                String packageName = packages[i].trim();
-                if (packageName.length() > 0) {
-                    System.out.println("Checking package: " + packageName);
-                    // load classes under servlet.invoker
-                    Set<Class> classes = getClasses(packageName);
-                    System.out.println("size: " + classes.size());
-                    for (Class clazz : classes) {
-                        String mapping = prefix + clazz.getName();
-                        System.out.println("Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
-                        ServletRegistration sr = sc.addServlet(clazz.getName(), clazz.getName());
-                        sr.addMapping(mapping);
-                    }
-                }
-            }
+
+        System.out.println(this.getClass().getCanonicalName() + ": Checking root package");
+        // load classes under servlet.invoker
+        Set<Class> classes = getClasses();
+        System.out.println(this.getClass().getCanonicalName() + " size: " + classes.size());
+        for (Class clazz : classes) {
+            String mapping = prefix + clazz.getName();
+            System.out.println(this.getClass().getCanonicalName() + ": Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
+            ServletRegistration sr = sc.addServlet(clazz.getName(), clazz.getName());
+            sr.addMapping(mapping);
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        System.out.println("contextDestroyed(ServletContextEvent e)");
+        System.out.println(this.getClass().getCanonicalName() + ".contextDestroyed(ServletContextEvent e)");
     }
 }
