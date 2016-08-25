@@ -83,6 +83,9 @@ public class InvokerLoadListener implements ServletContextListener {
             while (e.hasMoreElements()) {
                 JarEntry entry = e.nextElement();
                 if (entry.getName().endsWith(".class")) {
+
+                    System.out.println(this.getClass().getCanonicalName() + ": jarclass: " + file.getCanonicalPath() );
+
                     String name = entry.getName(); // .replace('/', '.');
                     name = name.substring(0, name.length() - 6);
                     checkClass(name, classes);
@@ -109,6 +112,11 @@ public class InvokerLoadListener implements ServletContextListener {
      */
     private Set<Class> findClassesFile(File file, Set<Class> classes) {
         if (file.isFile() && file.getName().endsWith(".class")) {
+            try {
+                System.out.println(this.getClass().getCanonicalName() + ": fileclass: " + file.getCanonicalPath() );
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             //classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
             checkClass(file.getName().substring(0, file.getName().length() - 6), classes);
         }
