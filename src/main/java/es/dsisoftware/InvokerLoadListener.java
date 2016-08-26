@@ -2,6 +2,7 @@ package es.dsisoftware;
 
 
 import java.io.File;
+import java.io.FileFilter;
 import java.io.IOException;
 import java.net.JarURLConnection;
 import java.net.URL;
@@ -10,10 +11,9 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.ServletContextListener;
-import javax.servlet.ServletRegistration;
+import java.util.logging.Logger;
+import javax.servlet.*;
+import javax.servlet.annotation.WebListener;
 import javax.servlet.http.HttpServlet;
 
 import org.apache.catalina.ContainerServlet;
@@ -23,7 +23,10 @@ import org.apache.catalina.ContainerServlet;
  *
  * @author ricky
  */
+@WebListener
 public class InvokerLoadListener implements ServletContextListener {
+
+    Logger LOG = Logger.getLogger(this.getClass().getCanonicalName());
 
     /**
      * Invoker parameter that defines the packages to search servlets.
@@ -89,6 +92,8 @@ public class InvokerLoadListener implements ServletContextListener {
                     String name = entry.getName(); // .replace('/', '.');
                     name = name.substring(0, name.length() - 6);
                     checkClass(name, classes);
+                } else {
+                    System.out.println(this.getClass().getCanonicalName() + ": unk : " + entry.getName() );
                 }
             }
         } catch (IOException e) {
@@ -112,23 +117,37 @@ public class InvokerLoadListener implements ServletContextListener {
      */
     private Set<Class> findClassesFile(File file, Set<Class> classes) {
         if (file.isFile() && file.getName().endsWith(".class")) {
-            try {
-                System.out.println(this.getClass().getCanonicalName() + ": fileclass: " + file.getCanonicalPath() );
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            // System.out.println(this.getClass().getCanonicalName() + ": fileclass: " + file.getAbsolutePath() );
             //classes.add(Class.forName(packageName + '.' + file.getName().substring(0, file.getName().length() - 6)));
             checkClass(file.getName().substring(0, file.getName().length() - 6), classes);
+        } else {
+            if(file.isDirectory() && file.getName().equals("classes")) {
+                File[] files = file.listFiles(new FileFilter() {
+                    @Override
+                    public boolean accept(File pathname) {
+                        return (pathname.getName().endsWith(".class"));
+                    }
+                });
+                for (File f : files) {
+                    findClassesFile(f, classes);
+                }
+            }
+
+            // System.out.println(this.getClass().getCanonicalName() + ": fileunk: " + file.getAbsolutePath() );
         }
         return classes;
     }
 
     private Set<Class> checkClass(String name, Set<Class> classes) {
         try {
-            Class clazz = Class.forName(name);
-            if (HttpServlet.class.isAssignableFrom(clazz)
-                    && ContainerServlet.class.isAssignableFrom(clazz)) {
+            ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+            Class clazz = classLoader.loadClass(name);
+            // System.out.println(this.getClass().getCanonicalName() + ": casting: " + clazz );
+
+            // Class clazz = Class.forName(name);
+            if (HttpServlet.class.isAssignableFrom(clazz)) {
                 classes.add(clazz);
+                System.out.println(this.getClass().getCanonicalName() + ": found: " + clazz.getCanonicalName() );
             }
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -138,7 +157,7 @@ public class InvokerLoadListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        System.out.println(this.getClass().getCanonicalName() + ".contextInitialized(ServletContextEvent e)");
+        LOG.info("contextInitialized");
         ServletContext sc = sce.getServletContext();
         String prefix = sc.getInitParameter(INVOKER_PREFIX_PARAMETER);
         if (prefix == null) {
@@ -151,14 +170,18 @@ public class InvokerLoadListener implements ServletContextListener {
         System.out.println(this.getClass().getCanonicalName() + " size: " + classes.size());
         for (Class clazz : classes) {
             String mapping = prefix + clazz.getName();
-            System.out.println(this.getClass().getCanonicalName() + ": Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
-            ServletRegistration sr = sc.addServlet(clazz.getName(), clazz.getName());
-            sr.addMapping(mapping);
+            ServletRegistration.Dynamic sr = sc.addServlet(clazz.getName(), clazz);
+            if(sr != null) {
+                System.out.println(this.getClass().getCanonicalName() + ": Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
+                sr.addMapping(mapping);
+            } else {
+                System.out.println(this.getClass().getCanonicalName() + ": Already registered servlet '" + clazz.getName() + "'");
+            }
         }
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        System.out.println(this.getClass().getCanonicalName() + ".contextDestroyed(ServletContextEvent e)");
+       LOG.info("contextDestroyed");
     }
 }
