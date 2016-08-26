@@ -141,7 +141,7 @@ public class InvokerLoadListener implements ServletContextListener {
             // Class clazz = Class.forName(name);
             if (HttpServlet.class.isAssignableFrom(clazz)) {
                 classes.add(clazz);
-                System.out.println(this.getClass().getCanonicalName() + ": found: " + clazz.getCanonicalName() );
+                // System.out.println(this.getClass().getCanonicalName() + ": found: " + clazz.getCanonicalName() );
             }
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
@@ -160,7 +160,9 @@ public class InvokerLoadListener implements ServletContextListener {
         // System.out.println(this.getClass().getCanonicalName() + ": Checking root package");
         // load classes under servlet.invoker
         Set<Class> classes = getClasses();
-        System.out.println(this.getClass().getCanonicalName() + ": Fonund " + classes.size() + " Servlets");
+        if(classes.size()>0)
+            System.out.println(this.getClass().getCanonicalName() + ": Fonund " + classes.size() + " Servlets");
+
         int i=0;
         for (Class clazz : classes) {
             String mapping = prefix + clazz.getName();
@@ -173,7 +175,8 @@ public class InvokerLoadListener implements ServletContextListener {
                 // System.out.println(this.getClass().getCanonicalName() + ": Already registered servlet '" + clazz.getName() + "'");
             }
         }
-        System.out.println(this.getClass().getCanonicalName() + ": Autoregistered " + classes.size() + " Servlets");
+        if(i!=0)
+            System.out.println(this.getClass().getCanonicalName() + ": Autoregistered " + i + " Servlets");
     }
 
     @Override
