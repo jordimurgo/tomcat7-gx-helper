@@ -29,12 +29,6 @@ public class InvokerLoadListener implements ServletContextListener {
     Logger LOG = Logger.getLogger(this.getClass().getCanonicalName());
 
     /**
-     * Invoker parameter that defines the packages to search servlets.
-     * Comma separated list of packages
-     */
-    public static final String PACKAGES_PARAMETER = "invoker.packages";
-
-    /**
      * Invoker parameter to setup the mapping name. By default is "/servlet/"
      */
     public static final String INVOKER_PREFIX_PARAMETER = "invoker.prefix";
@@ -87,13 +81,13 @@ public class InvokerLoadListener implements ServletContextListener {
                 JarEntry entry = e.nextElement();
                 if (entry.getName().endsWith(".class")) {
 
-                    System.out.println(this.getClass().getCanonicalName() + ": jarclass: " + entry.getName() );
+                    // System.out.println(this.getClass().getCanonicalName() + ": jarclass: " + entry.getName() );
 
                     String name = entry.getName(); // .replace('/', '.');
                     name = name.substring(0, name.length() - 6);
                     checkClass(name, classes);
                 } else {
-                    System.out.println(this.getClass().getCanonicalName() + ": unk : " + entry.getName() );
+                   // System.out.println(this.getClass().getCanonicalName() + ": unk : " + entry.getName() );
                 }
             }
         } catch (IOException e) {
@@ -157,31 +151,32 @@ public class InvokerLoadListener implements ServletContextListener {
 
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        LOG.info("contextInitialized");
         ServletContext sc = sce.getServletContext();
         String prefix = sc.getInitParameter(INVOKER_PREFIX_PARAMETER);
         if (prefix == null) {
             prefix = "/servlet/";
         }
 
-        System.out.println(this.getClass().getCanonicalName() + ": Checking root package");
+        // System.out.println(this.getClass().getCanonicalName() + ": Checking root package");
         // load classes under servlet.invoker
         Set<Class> classes = getClasses();
-        System.out.println(this.getClass().getCanonicalName() + " size: " + classes.size());
+        System.out.println(this.getClass().getCanonicalName() + ": Fonund " + classes.size() + " Servlets");
+        int i=0;
         for (Class clazz : classes) {
             String mapping = prefix + clazz.getName();
             ServletRegistration.Dynamic sr = sc.addServlet(clazz.getName(), clazz);
             if(sr != null) {
-                System.out.println(this.getClass().getCanonicalName() + ": Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
+                // System.out.println(this.getClass().getCanonicalName() + ": Adding '" + clazz.getName() + "' in mapping '" + mapping + "'");
+                i++;
                 sr.addMapping(mapping);
             } else {
-                System.out.println(this.getClass().getCanonicalName() + ": Already registered servlet '" + clazz.getName() + "'");
+                // System.out.println(this.getClass().getCanonicalName() + ": Already registered servlet '" + clazz.getName() + "'");
             }
         }
+        System.out.println(this.getClass().getCanonicalName() + ": Autoregistered " + classes.size() + " Servlets");
     }
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-       LOG.info("contextDestroyed");
     }
 }
